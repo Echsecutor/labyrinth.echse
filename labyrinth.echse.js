@@ -54,6 +54,11 @@ var LABYRINTH =
       FIELD_SIZE: 100,
       SPEED: 150,
 
+      // image consts
+      MUD: 1,
+      BUSH: 0,
+      STONE: 2,
+
       // a + b
       vector_add: function(a,b)
       {
@@ -111,10 +116,7 @@ var LABYRINTH =
 
         game.phaser_game.load.image("goal", "img/goal.png");
 
-
-        game.phaser_game.load.image("mud", "img/mud.png");
-        game.phaser_game.load.image("bush", "img/bush.png");
-        game.phaser_game.load.image("stone", "img/stone.png");
+        game.phaser_game.load.image('tileset', 'img/tilemap.png');
       },
 
       phaser_create: function(game){
@@ -122,21 +124,39 @@ var LABYRINTH =
 
         game.phaser_game.physics.startSystem(Phaser.Physics.ARCADE);
 
-        game.phaser_game.world.setBounds(0,0,game.board.width * LABYRINTH.FIELD_SIZE, game.board.height * LABYRINTH.FIELD_SIZE);
-
-        LABYRINTH.make_phaser_groups(game);
-        LABYRINTH.new_round(game);
-
         if(game.player == undefined)
           LABYRINTH.coin_player(game);
 
+        //  tilemap 
+        game.board.map = game.phaser_game.add.tilemap();
+        var map = game.board.map;
+
+        // tileset
+        // http://phaser.io/docs/2.6.2/Phaser.Tilemap.html#addTilesetImage
+        map.tileWidth = LABYRINTH.FIELD_SIZE;
+        map.tileHeight = LABYRINTH.FIELD_SIZE;
+        map.addTilesetImage('tileset');
+
+        // ground layer:
+        game.board.ground_layer = map.create('ground', game.board.width, game.board.height, LABYRINTH.FIELD_SIZE, LABYRINTH.FIELD_SIZE);
+        game.board.ground_layer.resizeWorld();
+
+        // player sprite
         game.player.phaser_sprite = game.phaser_game.add.sprite(0,0,game.player.graphix);
 
-        var player_sprite = game.player.phaser_sprite;
+        // air layer for flying stuff
+        game.board.air_layer = map.create('air', game.board.width, game.board.height, LABYRINTH.FIELD_SIZE, LABYRINTH.FIELD_SIZE);
 
-        // make player slightly smaller to fir through ;)
-        player_sprite.width = Math.floor(LABYRINTH.FIELD_SIZE * 0.95);
-        player_sprite.height = Math.floor(LABYRINTH.FIELD_SIZE * 0.95);
+
+        // start new round (to get startign position and goal)
+        LABYRINTH.new_round(game);
+
+
+        // player
+        var player_sprite = game.player.phaser_sprite;
+        // slightly smaller to fit through ;)
+        player_sprite.width = Math.floor(LABYRINTH.FIELD_SIZE * 0.9);
+        player_sprite.height = Math.floor(LABYRINTH.FIELD_SIZE * 0.9);
 
         player_sprite.x = game.player.start_x * LABYRINTH.FIELD_SIZE;
         player_sprite.y = game.player.start_y * LABYRINTH.FIELD_SIZE;
@@ -144,12 +164,16 @@ var LABYRINTH =
         game.phaser_game.physics.arcade.enable(player_sprite);
         game.phaser_game.camera.follow(player_sprite);
 
+        // for map collisions
+        game.player.phaser_sprite.body.tilePadding.set(LABYRINTH.FIELD_SIZE);
+
         player_sprite.body.collideWorldBounds = true;
 
         player_sprite.body.bounce.x = 0.2;
         player_sprite.body.bounce.y = 0.2;
 
 
+        // goal
         game.goal.phaser_sprite = game.phaser_game.add.sprite(0,0,game.goal.graphix);
         game.goal.phaser_sprite.width = LABYRINTH.FIELD_SIZE * 2;
         game.goal.phaser_sprite.height = LABYRINTH.FIELD_SIZE * 2;
@@ -157,6 +181,7 @@ var LABYRINTH =
         game.goal.phaser_sprite.x = game.goal.x * LABYRINTH.FIELD_SIZE;
         game.goal.phaser_sprite.y = game.goal.y * LABYRINTH.FIELD_SIZE;
 
+        // cursors
         game.cursors = game.phaser_game.input.keyboard.createCursorKeys();
 
         console.log("finished phaser_create.");
@@ -169,10 +194,10 @@ var LABYRINTH =
         next_field.y = Math.round(game.player.phaser_sprite.y / LABYRINTH.FIELD_SIZE) * LABYRINTH.FIELD_SIZE;
 
 
-        var hit = game.phaser_game.physics.arcade.collide(game.player.phaser_sprite, game.blocking_group);
-
-
         var player_sprite = game.player.phaser_sprite;
+
+        var map_collision = game.phaser_game.physics.arcade.collide(player_sprite, game.board.ground_layer);
+
         var body = player_sprite.body;
 
         // 'friction' ;)
@@ -181,12 +206,25 @@ var LABYRINTH =
 
         var active_pointer = game.phaser_game.input.activePointer;
 
+
+        //debugging:
+        game.phaser_game.debug.pointer(active_pointer);
+        game.phaser_game.debug.text("pointer: " + active_pointer.x + " / " + active_pointer.y, 10,10 );
+
+        game.phaser_game.debug.spriteBounds(player_sprite);
+
+        // game.debug.cameraInfo(game.camera, 32, 32);
+        // game.debug.body(sprite);
+        // game.debug.bodyInfo(sprite, 32, 32);
+
+
+        // movement:
         // left/right
         if
           (
             (
               game.cursors.left.isDown
-            || (active_pointer.isDown && active_pointer.x < player_sprite.x + player_sprite.width / 2)
+            || (active_pointer.isDown && active_pointer.worldX < player_sprite.x + player_sprite.width / 2)
             ) && !body.blocked.left
           )
         {
@@ -197,7 +235,7 @@ var LABYRINTH =
           (
             (
               game.cursors.right.isDown
-            || (active_pointer.isDown && active_pointer.x > player_sprite.x + player_sprite.width / 2)
+            || (active_pointer.isDown && active_pointer.worldX > player_sprite.x + player_sprite.width / 2)
             ) && !body.blocked.right
           )
         {
@@ -215,7 +253,7 @@ var LABYRINTH =
         if
           (
             game.cursors.up.isDown
-          || (active_pointer.isDown && active_pointer.y < player_sprite.y +player_sprite.height/2)
+            || (active_pointer.isDown && active_pointer.worldY < player_sprite.y + player_sprite.height / 2)
         )
         {
           body.velocity.y += -1 * LABYRINTH.SPEED;
@@ -223,7 +261,7 @@ var LABYRINTH =
         else if
           (
             game.cursors.down.isDown
-          || (active_pointer.isDown && active_pointer.y > player_sprite.y +player_sprite.height/2)
+          || (active_pointer.isDown && active_pointer.worldY > player_sprite.y + player_sprite.height / 2)
           )
         {
           body.velocity.y += LABYRINTH.SPEED;
@@ -325,19 +363,19 @@ var LABYRINTH =
                 )
               {
                 board.field[i].blocking = LABYRINTH.GROUND_BLOCKING;
-                board.field[i].graphix = "bush";
+                board.field[i].graphix = LABYRINTH.BUSH;
               }
               else
               {
                 board.field[i].blocking = LABYRINTH.NON_BLOCKING;
-                board.field[i].graphix = "mud";
+                board.field[i].graphix = LABYRINTH.MUD;
               }
             }
           }
 
           game.player.start_x = Math.floor(Math.random() * (board.width-2)) + 1;
           game.player.start_y = Math.floor(Math.random() * (board.height-2)) + 1;
-          LABYRINTH.board_rectangle(game,game.player.start_x,game.player.start_y,1,1,LABYRINTH.NON_BLOCKING,"mud");
+          LABYRINTH.board_rectangle(game,game.player.start_x,game.player.start_y,1,1,LABYRINTH.NON_BLOCKING,LABYRINTH.MUD);
 
           game.goal.x = Math.floor(Math.random() * (board.width-3))+1;
           game.goal.y =  Math.floor(Math.random() * (board.height-3))+1;
@@ -450,18 +488,18 @@ var LABYRINTH =
               if(board.field[i].generating == PATH)
               {
                 board.field[i].blocking = LABYRINTH.NON_BLOCKING;
-                board.field[i].graphix = "mud";
+                board.field[i].graphix = LABYRINTH.MUD;
               }
               else
               {
                 board.field[i].blocking = LABYRINTH.GROUND_BLOCKING;
-                board.field[i].graphix = "bush";
+                board.field[i].graphix = LABYRINTH.BUSH;
               }
             }
           }
         }//switch generator mode
           
-        LABYRINTH.board_rectangle(game,game.goal.x,game.goal.y,2,2,LABYRINTH.NON_BLOCKING,"mud");
+        LABYRINTH.board_rectangle(game,game.goal.x,game.goal.y,2,2,LABYRINTH.NON_BLOCKING,LABYRINTH.MUD);
 
         console.log(board);
         return game;
@@ -479,19 +517,6 @@ var LABYRINTH =
         return game;
       },
 
-      make_phaser_groups: function(game){
-        console.log("Creating phaser groups");
-
-        if(game == undefined || game.phaser_game == undefined) throw "Initialise phaser before making groups.";
-
-        game.passable_group = game.phaser_game.add.group();
-        game.passable_group.enableBody = true;
-
-        game.blocking_group = game.phaser_game.add.group();
-        game.blocking_group.enableBody = true;
-        return game;
-      },
-
       // start a new round by (re-)generating the initial
       // game state
       new_round: function(game){
@@ -501,34 +526,41 @@ var LABYRINTH =
           throw "Initialise phaser before starting a new round.";
         if(game.board == undefined)
           LABYRINTH.coin_board(game);
-        if(game.passable_group == undefined || game.blocking_group == undefined)
-          LABYRINTH.make_phaser_groups(game);
         if(game.player == undefined)
           LABYRINTH.coin_player(game);
 
         LABYRINTH.generate_labyrinth(game, LABYRINTH.DIGGY_LEVEL);
+
+        game.board.map.fill(LABYRINTH.MUD, 0, 0, game.board.width, game.board.height, game.board.ground_layer);
+
+        game.board.map.setCollision(LABYRINTH.STONE, true, game.board.ground_layer);
+        if(game.player.movement == LABYRINTH.WALKING)
+        {
+          console.log ("Bush collisions enabled");
+          game.board.map.setCollision(LABYRINTH.BUSH, true, game.board.ground_layer);
+        }
 
         for(var x = 0; x < game.board.width; x++)
         {
           for(var y = 0; y < game.board.height; y++)
           {
             var field = game.board.field[ y*game.board.width + x];
-            var x_coord = x * LABYRINTH.FIELD_SIZE;
-            var y_coord = y * LABYRINTH.FIELD_SIZE;
 
-            if(field.blocking < game.player.movement)
+            if(field.blocking == LABYRINTH.GROUND_BLOCKING)
             {
-              field.phaser_sprite = game.passable_group.create(x_coord, y_coord, field.graphix);
+              game.board.map.putTile(LABYRINTH.BUSH, x, y, game.board.ground_layer);
             }
-            else
+            else if (field.blocking == LABYRINTH.AIR_BLOCKING)
             {
-              field.phaser_sprite = game.blocking_group.create(x_coord, y_coord, field.graphix);
-              field.phaser_sprite.body.immovable = true;
+              game.board.map.putTile(LABYRINTH.STONE, x, y, game.board.ground_layer);
+              game.board.map.putTile(LABYRINTH.BUSH, x, y, game.board.air_layer);
             }
-            field.phaser_sprite.width = LABYRINTH.FIELD_SIZE;
-            field.phaser_sprite.height = LABYRINTH.FIELD_SIZE;
           }
         }
+
+        // render player top most
+        // TODO: reconsider once using air layer
+        game.phaser_game.world.bringToTop(game.player.phaser_sprite);
 
         console.log("New round started.");
 

@@ -144,13 +144,8 @@ var LABYRINTH =
         // player sprite
         game.player.phaser_sprite = game.phaser_game.add.sprite(0,0,game.player.graphix);
 
-        // air layer for flying stuff
-        game.board.air_layer = map.create('air', game.board.width, game.board.height, LABYRINTH.FIELD_SIZE, LABYRINTH.FIELD_SIZE);
-
-
         // start new round (to get startign position and goal)
         LABYRINTH.new_round(game);
-
 
         // player
         var player_sprite = game.player.phaser_sprite;
@@ -162,16 +157,13 @@ var LABYRINTH =
         player_sprite.y = game.player.start_y * LABYRINTH.FIELD_SIZE;
 
         game.phaser_game.physics.arcade.enable(player_sprite);
-        game.phaser_game.camera.follow(player_sprite);
-
-        // for map collisions
-        game.player.phaser_sprite.body.tilePadding.set(LABYRINTH.FIELD_SIZE);
 
         player_sprite.body.collideWorldBounds = true;
 
         player_sprite.body.bounce.x = 0.2;
         player_sprite.body.bounce.y = 0.2;
 
+        game.phaser_game.camera.follow(player_sprite);
 
         // goal
         game.goal.phaser_sprite = game.phaser_game.add.sprite(0,0,game.goal.graphix);
@@ -193,7 +185,6 @@ var LABYRINTH =
         next_field.x = Math.round(game.player.phaser_sprite.x / LABYRINTH.FIELD_SIZE) * LABYRINTH.FIELD_SIZE;
         next_field.y = Math.round(game.player.phaser_sprite.y / LABYRINTH.FIELD_SIZE) * LABYRINTH.FIELD_SIZE;
 
-
         var player_sprite = game.player.phaser_sprite;
 
         var map_collision = game.phaser_game.physics.arcade.collide(player_sprite, game.board.ground_layer);
@@ -208,14 +199,13 @@ var LABYRINTH =
 
 
         //debugging:
-        game.phaser_game.debug.pointer(active_pointer);
-        game.phaser_game.debug.text("pointer: " + active_pointer.x + " / " + active_pointer.y, 10,10 );
+        // game.phaser_game.debug.pointer(active_pointer);
 
-        game.phaser_game.debug.spriteBounds(player_sprite);
+        //game.phaser_game.debug.spriteBounds(player_sprite);
 
-        // game.debug.cameraInfo(game.camera, 32, 32);
-        // game.debug.body(sprite);
-        // game.debug.bodyInfo(sprite, 32, 32);
+        // game.phaser_game.debug.cameraInfo(game.phaser_game.camera, 32, 32);
+        // game.phaser_game.debug.body(player_sprite);
+        // game.phaser_game.debug.bodyInfo(player_sprite, 32, 32);
 
 
         // movement:
@@ -533,12 +523,6 @@ var LABYRINTH =
 
         game.board.map.fill(LABYRINTH.MUD, 0, 0, game.board.width, game.board.height, game.board.ground_layer);
 
-        game.board.map.setCollision(LABYRINTH.STONE, true, game.board.ground_layer);
-        if(game.player.movement == LABYRINTH.WALKING)
-        {
-          console.log ("Bush collisions enabled");
-          game.board.map.setCollision(LABYRINTH.BUSH, true, game.board.ground_layer);
-        }
 
         for(var x = 0; x < game.board.width; x++)
         {
@@ -553,9 +537,15 @@ var LABYRINTH =
             else if (field.blocking == LABYRINTH.AIR_BLOCKING)
             {
               game.board.map.putTile(LABYRINTH.STONE, x, y, game.board.ground_layer);
-              game.board.map.putTile(LABYRINTH.BUSH, x, y, game.board.air_layer);
             }
           }
+        }
+
+        game.board.map.setCollision(LABYRINTH.STONE, true, game.board.ground_layer);
+        if(game.player.movement == LABYRINTH.WALKING)
+        {
+          console.log ("Bush collisions enabled");
+          game.board.map.setCollision(LABYRINTH.BUSH, true, game.board.ground_layer);
         }
 
         // render player top most

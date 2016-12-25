@@ -2,17 +2,12 @@
  *
  * @file labyrinth.echse.js
  *
- * @version 1.0.0
- *
  * @copyright 2016 Sebastian Schmittner <sebastian@schmittner.pw>
- *
- *
+ * 
  * @section DESCRIPTION
  *
- * This is a simple labyrinth game made with phaser (tutorial level
- * complexity).
- *
- *
+ * This is a simple labyrinth game made with phaser (prototype quality).
+ * 
  * @section LICENSE
  *
  * The is free software: you can redistribute it and/or modify it
@@ -36,6 +31,9 @@
 // main namespace
 var LABYRINTH =
     {
+
+      // for debugging
+      show_fps: false,
 
       // ground type enum
       NON_BLOCKING: 0,
@@ -81,8 +79,28 @@ var LABYRINTH =
         return re;
       },
 
+      // some document size gymnastics -.-
+      doc_size: function(){
+        var body = document.body,
+            html = document.documentElement;
+
+        // using: http://stackoverflow.com/questions/1145850/how-to-get-height-of-entire-document-with-javascript#1147768
+        // by http://stackoverflow.com/users/27388/borgar
+        var re = {};
+        re.height = Math.max( body.scrollHeight, body.offsetHeight, 
+                                        html.clientHeight, html.scrollHeight,
+                                        html.offsetHeight );
+        // using http://stackoverflow.com/questions/5484578/how-to-get-document-height-and-width-without-using-jquery#5484623
+        // by http://stackoverflow.com/users/322222/dan
+        // adapted to above style
+        re.width = Math.max(html.clientWidth, body.scrollWidth,
+                                      body.scrollWidth, body.offsetWidth,
+                                      html.offsetWidth);
+        return re;
+      },
+
       // coin phaser game
-      run_phaser: function(game, preload_function, create_function, update_function)
+      run_phaser: function(game, preload_function, create_function, update_function, render_function)
       {
         console.log("Creating phaser game");
 
@@ -94,16 +112,19 @@ var LABYRINTH =
         if(preload_function == undefined) preload_function = function(){};
         if(create_function == undefined) create_function = function(){};
         if(update_function == undefined) update_function = function(){};
+        if(render_function == undefined) render_function = function(){};
 
+        var phaser_size = LABYRINTH.doc_size();
         game.phaser_game = new Phaser.Game(
-          "100%",
-          "100%",
+          phaser_size.width,
+          phaser_size.height,
           Phaser.AUTO,
           'phaser-game-frame',
           {
             preload: preload_function,
             create: create_function,
-            update: update_function
+            update: update_function,
+            render: render_function
           });
 
         return game;
@@ -117,6 +138,10 @@ var LABYRINTH =
         game.phaser_game.load.image("goal", "img/goal.png");
 
         game.phaser_game.load.image('tileset', 'img/tilemap.png');
+
+        if(LABYRINTH.show_fps)
+          game.phaser_game.time.advancedTiming = true;
+        
       },
 
       phaser_create: function(game){
@@ -173,11 +198,34 @@ var LABYRINTH =
         game.goal.phaser_sprite.x = game.goal.x * LABYRINTH.FIELD_SIZE;
         game.goal.phaser_sprite.y = game.goal.y * LABYRINTH.FIELD_SIZE;
 
+        game.phaser_game.physics.arcade.enable(game.goal.phaser_sprite);
+        game.goal.phaser_sprite.body.immovable=true;
+
         // cursors
         game.cursors = game.phaser_game.input.keyboard.createCursorKeys();
 
         console.log("finished phaser_create.");
       },
+
+      phaser_render: function(game){
+
+        if(!LABYRINTH.show_fps)
+          return;
+
+        var current_fps = game.phaser_game.time.fps;
+        if(game.min_fps == undefined)
+          game.min_fps = 1000;
+        if(game.av_fps == undefined)
+          game.av_fps = current_fps;
+
+        if(current_fps > 0)
+          game.min_fps = Math.min(current_fps, game.min_fps);
+        
+        var moving_frame_size = 10;
+        game.av_fps = game.av_fps * (moving_frame_size -1)/moving_frame_size + current_fps / moving_frame_size;
+
+        game.phaser_game.debug.text("FPS: current: " + current_fps + ", min: " + game.min_fps + ", average: " + Math.floor(game.av_fps), 16,16);   
+},
 
       phaser_update: function(game){
 
@@ -188,6 +236,8 @@ var LABYRINTH =
         var player_sprite = game.player.phaser_sprite;
 
         var map_collision = game.phaser_game.physics.arcade.collide(player_sprite, game.board.ground_layer);
+
+        game.phaser_game.physics.arcade.collide(player_sprite, game.goal.phaser_sprite, function(){LABYRINTH.win(game);});
 
         var body = player_sprite.body;
 
@@ -557,6 +607,24 @@ var LABYRINTH =
         return game;
       },
 
+      win: function(game){
+        console.log("win!");
+        var msg = 'You made it!';
+        var text = game.phaser_game.add.text(game.goal.phaser_sprite.x + game.goal.phaser_sprite.width / 2, game.goal.phaser_sprite.y + 32, msg,
+                                             {
+                                               
+                                             });
+        text.anchor.set(0.5);
+        text.align = 'center';
+
+        for(var i = 0; i < msg.length; i++)
+        {
+          text.addColor('rgba('+ Math.floor(Math.random() * 256) + ',' + Math.floor(Math.random() * 256) + ',' + Math.floor(Math.random() * 256) + ',1)', i);
+        }
+ 
+        text.setShadow(5, 5, 'rgba(0,0,0,0.5)', 10);
+      },
+
       // main function, can be viewed as a
       // singleton game object
       run: function(){
@@ -571,12 +639,16 @@ var LABYRINTH =
           game,
           function(){LABYRINTH.phaser_preload(game);},
           function(){LABYRINTH.phaser_create(game);},
-          function(){LABYRINTH.phaser_update(game);}
+          function(){LABYRINTH.phaser_update(game);},
+          function(){LABYRINTH.phaser_render(game);}
         );
 
       }
     };
 
 
-// run the game
-LABYRINTH.run();
+document.addEventListener("DOMContentLoaded", function(event) { 
+  // run the game after the browser figuered winow sizes...
+
+  LABYRINTH.run();
+});

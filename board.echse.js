@@ -183,115 +183,117 @@ var BOARD = BOARD || {};
   // reasonable labyrinth generator
   function path_digger()
   {
-      var PATH = 1;
-      var EARTH = 2;
-      var NEAR_PATH = 3;
-      var WALL = 4;
+    var PATH = 1;
+    var EARTH = 2;
+    var NEAR_PATH = 3;
+    var WALL = 4;
 
-      // start with sandbox
-      for(var x = 0; x < d_width; x++)
-      {
-        for(var y = 0; y < d_height; y++)
-        {
-          var i = BOARD.to_index({x:x,y:y});
-          field[i] = {};
-          field[i].generating = EARTH;
-        }
-      }
-
-      // outer walls
-      for(var x = 0; x < d_width; x++)
-      {
-        field[BOARD.to_index({x:x, y:0})].generating = WALL;
-        field[BOARD.to_index({x:x, y:d_height - 1})].generating = WALL;
-      }
+    // start with sandbox
+    for(var x = 0; x < d_width; x++)
+    {
       for(var y = 0; y < d_height; y++)
       {
-        field[BOARD.to_index({x:0, y:y})].generating = WALL;
-        field[BOARD.to_index({x:d_width - 1, y:y})].generating = WALL;
+        var i = BOARD.to_index({x:x,y:y});
+        field[i] = {};
+        field[i].generating = EARTH;
+      }
+    }
+
+    // outer walls
+    for(var x = 0; x < d_width; x++)
+    {
+      field[BOARD.to_index({x:x, y:0})].generating = WALL;
+      field[BOARD.to_index({x:x, y:d_height - 1})].generating = WALL;
+    }
+    for(var y = 0; y < d_height; y++)
+    {
+      field[BOARD.to_index({x:0, y:y})].generating = WALL;
+      field[BOARD.to_index({x:d_width - 1, y:y})].generating = WALL;
+    }
+
+    // player starts on the left
+    player_start_position.x = 0;
+    player_start_position.y = Math.floor(Math.random() * (d_height - 2)) + 1;
+
+    var current_field ={
+      x: player_start_position.x,
+      y: player_start_position.y
+    };
+
+    var generating = true;
+    while(generating)
+    {
+      var i = BOARD.to_index({x:current_field.x, y:current_field.y});
+
+      // grow path
+      field[i].generating = PATH;
+
+      // mark neighbours
+      var next_field = [];
+      var top = UTILS.vector_add(current_field, {x:0, y:-1});
+      var bottom = UTILS.vector_add(current_field, {x:0, y:1});
+      var left = UTILS.vector_add(current_field, {x:-1, y:0});
+      var right = UTILS.vector_add(current_field, {x:1, y:0});
+
+      var neighbours = [top, bottom, left, right];
+
+      for (var neighbour of neighbours)
+      {
+        if(BOARD.within_board(neighbour))
+        {
+          if(field[BOARD.to_index(neighbour)].generating == EARTH)
+          {
+            next_field.push(neighbour);
+            field[BOARD.to_index(neighbour)].generating = NEAR_PATH;
+          }
+          else if(field[BOARD.to_index(neighbour)].generating == NEAR_PATH)
+            field[BOARD.to_index(neighbour)].generating = WALL;
+        }
       }
 
-      // player starts on the left
-      player_start_position.x = 0;
-      player_start_position.y = Math.floor(Math.random() * (d_height - 2)) + 1;
-
-      var current_field ={
-        x: player_start_position.x,
-        y: player_start_position.y
-      };
-
-      var generating = true;
-      while(generating)
+      // determine next step (random walk)
+      if(next_field.length > 0)
       {
-        var i = BOARD.to_index({x:current_field.x, y:current_field.y});
-
-        // grow path
-        field[i].generating = PATH;
-
-        // mark neighbours
-        var next_field = [];
-        var top = UTILS.vector_add(current_field, {x:0, y:-1});
-        var bottom = UTILS.vector_add(current_field, {x:0, y:1});
-        var left = UTILS.vector_add(current_field, {x:-1, y:0});
-        var right = UTILS.vector_add(current_field, {x:1, y:0});
-
-        var neighbours = [top, bottom, left, right];
-
-        for (var neighbour of neighbours)
+        current_field = next_field[Math.floor(Math.random() * next_field.length)];
+      }
+      else
+      {
+        // dead end -> create crossing at random possition
+        while(field[BOARD.to_index(current_field)].generating != NEAR_PATH)
         {
-          if(BOARD.within_board(neighbour))
-          {
-            if(field[BOARD.to_index(neighbour)].generating == EARTH)
-            {
-              next_field.push(neighbour);
-              field[BOARD.to_index(neighbour)].generating = NEAR_PATH;
-            }
-            else if(field[BOARD.to_index(neighbour)].generating == NEAR_PATH)
-              field[BOARD.to_index(neighbour)].generating = WALL;
-          }
+          current_field.x = Math.floor(Math.random() * (d_width - 2)) + 1;
+          current_field.y = Math.floor(Math.random() * (d_height - 2)) + 1;
         }
+      }
 
-        // determine next step (random walk)
-        if(next_field.length > 0)
+      if(current_field.x == d_width - 2)
+      {
+        // reached goal zone
+        generating = false;
+
+        goal_position.x = current_field.x;
+        goal_position.y = current_field.y;
+        console.log("goal at " + goal_position);
+      }
+
+    }//wend digging path
+
+    // convert to bloking types
+    for(var x = 0; x < d_width; x++)
+    {
+      for(var y = 0; y < d_height; y++)
+      {
+        var i = BOARD.to_index({x:x,y:y});
+        if(field[i].generating == PATH)
         {
-          current_field = next_field[Math.floor(Math.random() * next_field.length)];
+          field[i].blocking = BOARD.blocking_type.NON_BLOCKING;
         }
         else
         {
-          // dead end -> create crossing at random possition
-          while(field[BOARD.to_index(current_field)].generating != NEAR_PATH)
-          {
-            current_field.x = Math.floor(Math.random() * (d_width - 2)) + 1;
-            current_field.y = Math.floor(Math.random() * (d_height - 2)) + 1;
-          }
-        }
-
-        if(current_field.x == d_width - 2)
-        {
-          // reached goal zone
-          generating = false;
-
-          goal_position.x = current_field.x;
-          goal_position.y =  current_field.y;
-        }
-
-      }//wend digging path
-
-      for(var x = 0; x < d_width; x++)
-      {
-        for(var y = 0; y < d_height; y++)
-        {
-          var i = BOARD.to_index({x:x,y:y});
-          if(field[i].generating == PATH)
-          {
-            field[i].blocking = BOARD.blocking_type.NON_BLOCKING;
-          }
-          else
-          {
-            field[i].blocking = BOARD.blocking_type.GROUND_BLOCKING;
-          }
+          field[i].blocking = BOARD.blocking_type.GROUND_BLOCKING;
         }
       }
+    }
   };
 
 
@@ -317,19 +319,19 @@ var BOARD = BOARD || {};
     rectangle(goal_position.x, goal_position.y, 2, 2, BOARD.blocking_type.NON_BLOCKING);
 
 
-//    console.log(board);
+    //    console.log(board);
   };
 
 
   BOARD.get_start_position = function(){
-    var re = {};
-    re.player = {};
-    re.player.x = player_start_position.x;
-    re.player.y = player_start_position.y;
-    re.goal = {};
-    re.goal.x = goal_position.x;
-    re.player.y = player_start_position.y;
-    return re;
-  }
+                          var re = {};
+                          re.player = {};
+                          re.player.x = player_start_position.x;
+                          re.player.y = player_start_position.y;
+                          re.goal = {};
+                          re.goal.x = goal_position.x;
+                          re.goal.y = goal_position.y;
+                          return re;
+                        }
 
 })();

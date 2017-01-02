@@ -2,7 +2,7 @@
  *
  * @file labyrinth.echse.js
  *
- * @copyright 2016 Sebastian Schmittner <sebastian@schmittner.pw>
+ * @copyright 2016-2017 Sebastian Schmittner <sebastian@schmittner.pw>
  *
  * @section DESCRIPTION
  *
@@ -29,6 +29,9 @@
 
 // using utils.echse.js
 // using board.echse.js
+// using term.echse.js
+
+
 
 // main namespace
 var LABYRINTH = LABYRINTH || {};
@@ -45,6 +48,8 @@ var LABYRINTH = LABYRINTH || {};
 
   // for debugging
   var show_fps = false;
+
+  var ghost = false;
 
   // tile side length in pixels
   var FIELD_SIZE= 100;
@@ -76,7 +81,7 @@ var LABYRINTH = LABYRINTH || {};
   };
 
   //--------------------------------------------------
-  // private members:
+  // members:
   //--------------------------------------------------
 
   // phaser game object
@@ -90,6 +95,8 @@ var LABYRINTH = LABYRINTH || {};
   var player;
   var goal;
 
+  var win_text;
+
   // debugging
   var fps = {};
 
@@ -102,6 +109,7 @@ var LABYRINTH = LABYRINTH || {};
     game = new Phaser.Game(
       phaser_size.width,
       phaser_size.height,
+//      Phaser.CANVAS,
       Phaser.AUTO,
       'phaser-game-frame',
       {
@@ -121,14 +129,13 @@ var LABYRINTH = LABYRINTH || {};
     game.load.spritesheet("flutter", "img/flutter.png",100,100);
 
     // goal
-    game.load.image("celestia", "img/celestia.png");
+    game.load.spritesheet("celestia", "img/celestia.png", 256, 256);
 
     // map tileset
     game.load.image('tileset', tileset.filename);
 
     // for debugging
-    if(show_fps)
-      game.time.advancedTiming = true;
+    game.time.advancedTiming = true;
   };
 
 
@@ -146,6 +153,9 @@ var LABYRINTH = LABYRINTH || {};
     map.addTilesetImage('tileset');
 
     game_state.current = game_state.CHOOSING_LEVEL;
+
+    //  Capture all key presses
+    game.input.keyboard.addCallbacks(this, key_down, null, null);
 
     show_menu();
 
@@ -186,7 +196,9 @@ var LABYRINTH = LABYRINTH || {};
     if(player != undefined)
       player.kill();
 
-    player = game.add.sprite(start_postitions.player.x * FIELD_SIZE, start_postitions.player.y * FIELD_SIZE, game_mode.player_graphix);
+    player = game.add.sprite((start_postitions.player.x + 0.5) * FIELD_SIZE, (start_postitions.player.y + 0.5) * FIELD_SIZE, game_mode.player_graphix);
+
+    player.anchor.set(0.5);
 
     // slightly smaller to fit through ;)
     player.width = Math.floor(FIELD_SIZE * 0.9);
@@ -199,7 +211,14 @@ var LABYRINTH = LABYRINTH || {};
     player.body.bounce.x = 0.2;
     player.body.bounce.y = 0.2;
 
-    game.camera.follow(player, Phaser.Camera.FOLLOW_TOPDOWN);
+    game.camera.follow(player, game.camera.FOLLOW_TOPDOWN);
+
+    /*
+// specify camera deadzone more explicitly
+var border_size = Math.max(Math.ceil((game.width + game.height) / 20), 2 * FIELD_SIZE);
+game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width - 2 * border_size, game.height - 2 * border_size);
+     */
+    
     game.camera.lerp.set(0.5);
     game.renderer.renderSession.roundPixels = true;
 
@@ -263,8 +282,18 @@ var LABYRINTH = LABYRINTH || {};
   // only used for debugging
   function render(){
 
+     /*
+    // only works with canvas
+    var zone = game.camera.deadzone;
+    game.context.fillStyle = 'rgba(255,0,0,0.6)';
+    game.context.fillRect(zone.x, zone.y, zone.width, zone.height);
+     */
+
     if(!show_fps)
+    {
+      game.debug.text("");
       return;
+    }
 
     var current_fps = game.time.fps;
     if(fps.min == undefined)
@@ -284,6 +313,7 @@ var LABYRINTH = LABYRINTH || {};
 
   // switch game_state and call corresponding update function
   function update(){
+
     if(game_state.current == game_state.RUNNING)
       running_update();
     else if (game_state.current == game_state.CHOOSING_LEVEL)
@@ -295,17 +325,73 @@ var LABYRINTH = LABYRINTH || {};
   };
 
 
+  // forward keystrokes to terminal, if present
+  function key_down(event)
+  {
+//    console.log("Key pressed: ")
+
+    var key = event.key;
+
+    if(TERM.enabled)
+    {
+      if(key == "Enter")
+      {
+        var command = TERM.commit();
+        TERM.hide();
+        handle_command(command);
+      }
+      else if(key == "Tab" || key == "Escape")
+        TERM.hide();
+      else if (key == "Backspace")
+        TERM.del(-1);
+      else if(key == "Delete")
+        TERM.del(1);
+      else if (key == "ArrowRight")
+        TERM.move_cursor(1);
+      else if (key == "ArrowLeft")
+        TERM.move_cursor(-1);
+      else if (key.length == 1)//likely a character ;)
+        TERM.input(key);
+      else
+        console.log(event);
+    }
+    else
+    {
+      if(key == "Enter" || key == "Tab")
+        TERM.show(game);
+    }
+  };
+
+  function handle_command(command)
+  {
+    if(command == "ghost")
+    {
+      ghost = ! ghost;
+      TERM.log("ghost mode: " + ghost);
+    }
+    else if (command == "fps")
+    {
+      show_fps = ! show_fps;
+      TERM.log("show fps: " + show_fps);
+    }
+    else
+    {
+      TERM.show(game);
+      TERM.log("Command '" + command +"' unknown.\nPress escape to close terminal.");
+    }
+  }
+
   // display some debugging infos
   function debugging_text()
   {
     //debugging:
-    // game.phaser_game.debug.pointer(active_pointer);
+    // game.debug.pointer(active_pointer);
 
-    //game.phaser_game.debug.spriteBounds(player_sprite);
+    //game.debug.spriteBounds(player_sprite);
 
-    // game.phaser_game.debug.cameraInfo(game.phaser_game.camera, 32, 32);
-    // game.phaser_game.debug.body(player_sprite);
-    // game.phaser_game.debug.bodyInfo(player_sprite, 32, 32);
+    // game.debug.cameraInfo(game.camera, 32, 32);
+    // game.debug.body(player_sprite);
+    // game.debug.bodyInfo(player_sprite, 32, 32);
 
   }
 
@@ -320,6 +406,8 @@ var LABYRINTH = LABYRINTH || {};
   {
     //todo
     player.body.velocity.set(0);
+    random_color_text(win_text);
+
   }
 
 
@@ -327,7 +415,8 @@ var LABYRINTH = LABYRINTH || {};
   function running_update()
   {
     // collisions:
-    var map_collision = game.physics.arcade.collide(player, ground_layer);
+    if(!ghost)
+      var map_collision = game.physics.arcade.collide(player, ground_layer);
     // transition to win state
     game.physics.arcade.collide(player, goal,
                                  function(){win();});
@@ -402,9 +491,16 @@ var LABYRINTH = LABYRINTH || {};
       body.velocity.y += (nearest_field.y +  (FIELD_SIZE - player.height) / 2 - player.y) * 0.2;
     }
 
-    // floor
+    // floor plyer velocity
     body.velocity.x = Math.floor(body.velocity.x);
     body.velocity.y = Math.floor(body.velocity.y);
+
+
+    // turn celestia
+    if(player.x < goal.x)
+      goal.frame = 0;
+    else
+      goal.frame = 1;
 
   };
 
@@ -420,12 +516,12 @@ var LABYRINTH = LABYRINTH || {};
   function win(){
     console.log("win!");
     var msg = 'You made it!';
-    var text = game.add.text(goal.x + goal.width / 2, goal.y, msg);
-    text.anchor.set(0.5);
-    text.align = 'center';
-    random_color_text(text);
-    text.setShadow(5, 5, 'rgba(0,0,0,0.5)', 10);
-    game.camera.focusOn(text);
+    win_text = game.add.text(goal.x + goal.width / 2, goal.y, msg);
+    win_text.anchor.set(0.5);
+    win_text.align = 'center';
+    random_color_text(win_text);
+    win_text.setShadow(5, 5, 'rgba(0,0,0,0.5)', 10);
+    game.camera.focusOn(win_text);
     
     game_state.current = game_state.WIN;
 

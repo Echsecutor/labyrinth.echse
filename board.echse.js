@@ -2,9 +2,14 @@
  *
  * @file board.echse.js
  *
- * @copyright 2016 Sebastian Schmittner <sebastian@schmittner.pw>
+ * @copyright 2016-2017 Sebastian Schmittner <sebastian@schmittner.pw>
  *
+ * 
+ * @section DESCRIPTION
+ * 
+ * This is a simple 2d (labyrinth) level generator.
  *
+ * 
  * @section LICENSE
  *
  * The is free software: you can redistribute it and/or modify it
@@ -31,24 +36,12 @@ var BOARD = BOARD || {};
 
 (function(){
 
-  //--------------------------------------------------
-  // enums:
-  //--------------------------------------------------
-
-  BOARD.labyrinth_generator_mode =
-    {
-      SCATTER_LEVEL: 0,
-      DIGGY_LEVEL:1
-    };
-
-  BOARD.blocking_type = {
-    NON_BLOCKING: 0,
-    GROUND_BLOCKING: 1,
-    AIR_BLOCKING: 2
-  };
+  //==================================================
+  // private:
+  //==================================================
 
   //--------------------------------------------------
-  // private members:
+  // members:
   //--------------------------------------------------
 
   var d_width = 64;
@@ -59,68 +52,6 @@ var BOARD = BOARD || {};
   var player_start_position = {};
   var goal_position = {};
 
-
-  BOARD.field = function(which)
-  {
-    which = which || {};
-    var i = which.i;
-    if(i == undefined)
-      i = BOARD.to_index(which);
-
-    return field[i];
-  }
-
-  BOARD.set_dimensions = function(p_width, p_height)
-  {
-    d_width = p_width || 64;
-    d_height = p_height || 64;
-
-    field = [d_width * d_height];
-
-    console.log("Setting board size: " + d_width + " / " + d_height);
-  };
-
-
-  // to set width and height use set_dimensions to safe one array allocation
-  Object.defineProperty(BOARD, "width",
-                        {
-                          get: function () { return d_width; },
-                          set: function (p_width) { this.set_dimensions(p_width, this.height);}
-                        });
-
-  // to set width and height use set_dimensions to safe one array allocation
-  Object.defineProperty(BOARD, "height",
-                        {
-                          get: function () { return d_height; },
-                          set: function (p_height) { this.set_dimensions(this.width, p_height);}
-                        });
-
-
-  BOARD.to_index = function(options)
-  {
-    if(options == undefined) return 0;
-    if(options.x == undefined) options.x = 0;
-    if(options.y == undefined) options.y = 0;
-
-    if(! this.within_board(options))
-      throw "Out of board!";
-
-    return options.y * d_width + options.x;
-  };
-
-
-  BOARD.within_board = function(options)
-  {
-    if(options == undefined) return false;
-    if(options.x == undefined) options.x = 0;
-    if(options.y == undefined) options.y = 0;
-
-    if(options.x > d_width || options.y > d_height
-                           || options.x < 0 || options.y < 0)
-      return false;
-
-    return true;
-  };
 
 
   function rectangle(from_x, from_y, p_width, p_height, blocking)
@@ -296,6 +227,94 @@ var BOARD = BOARD || {};
     }
   };
 
+  //==================================================
+  // public:
+  //==================================================
+
+  //--------------------------------------------------
+  // enums:
+  //--------------------------------------------------
+
+  BOARD.labyrinth_generator_mode =
+    {
+      SCATTER_LEVEL: 0,
+      DIGGY_LEVEL:1
+    };
+
+  BOARD.blocking_type = {
+    NON_BLOCKING: 0,
+    GROUND_BLOCKING: 1,
+    AIR_BLOCKING: 2
+  };
+
+
+  //--------------------------------------------------
+  // members:
+  //--------------------------------------------------
+
+
+  BOARD.field = function(which)
+  {
+    which = which || {};
+    var i = which.i;
+    if(i == undefined)
+      i = BOARD.to_index(which);
+
+    return field[i];
+  }
+
+  BOARD.set_dimensions = function(p_width, p_height)
+  {
+    d_width = p_width || 64;
+    d_height = p_height || 64;
+
+    field = [d_width * d_height];
+
+    console.log("Setting board size: " + d_width + " / " + d_height);
+  };
+
+
+  // to set width and height use set_dimensions to safe one array allocation
+  Object.defineProperty(BOARD, "width",
+                        {
+                          get: function () { return d_width; },
+                          set: function (p_width) { this.set_dimensions(p_width, this.height);}
+                        });
+
+  // to set width and height use set_dimensions to safe one array allocation
+  Object.defineProperty(BOARD, "height",
+                        {
+                          get: function () { return d_height; },
+                          set: function (p_height) { this.set_dimensions(this.width, p_height);}
+                        });
+
+
+  BOARD.to_index = function(options)
+  {
+    if(options == undefined) return 0;
+    if(options.x == undefined) options.x = 0;
+    if(options.y == undefined) options.y = 0;
+
+    if(! this.within_board(options))
+      throw "Out of board!";
+
+    return options.y * d_width + options.x;
+  };
+
+
+  BOARD.within_board = function(options)
+  {
+    if(options == undefined) return false;
+    if(options.x == undefined) options.x = 0;
+    if(options.y == undefined) options.y = 0;
+
+    if(options.x > d_width || options.y > d_height
+                           || options.x < 0 || options.y < 0)
+      return false;
+
+    return true;
+  };
+
 
   // erases labyrinth, if existing, and generates a new one
   BOARD.generate_labyrinth = function(generator_mode)
@@ -333,5 +352,6 @@ var BOARD = BOARD || {};
                           re.goal.y = goal_position.y;
                           return re;
                         }
+
 
 })();

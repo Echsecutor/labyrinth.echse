@@ -1,8 +1,8 @@
 /**********************************************************************
  *
- * @file utility.echse.js
+ * @file utils.echse.js
  *
- * @copyright 2016 Sebastian Schmittner <sebastian@schmittner.pw>
+ * @copyright 2016-2017 Sebastian Schmittner <sebastian@schmittner.pw>
  *
  *
  * @section LICENSE

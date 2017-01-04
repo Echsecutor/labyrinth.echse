@@ -87,6 +87,8 @@ var LABYRINTH = LABYRINTH || {};
   // phaser game object
   var game;
 
+  var menu_buttons = [];
+
   // phaser tile map and layer
   var map;
   var ground_layer;
@@ -130,6 +132,7 @@ var LABYRINTH = LABYRINTH || {};
 
     // goal
     game.load.spritesheet("celestia", "img/celestia.png", 256, 256);
+    game.load.image("castle", "img/castle1.png");
 
     // map tileset
     game.load.image('tileset', tileset.filename);
@@ -165,20 +168,74 @@ var LABYRINTH = LABYRINTH || {};
 
 
   function show_menu(){
-    // todo
 
-    // for now: skip
-    game_state.current = game_state.RUNNING;
-    start_new_round();
+    game_state.current = game_state.CHOOSING_LEVEL;
 
+    for (var sprite of [ground_layer, player, goal]){
+      if(sprite != undefined)
+      {
+        sprite.kill();
+        sprite = undefined;
+      }
+    }
+
+    for(var button of menu_buttons)
+      button.kill();
+    menu_buttons.length = 0;//clear
+
+    // rainbow dash
+    menu_buttons.push(game.add.button
+                      (0, 0,
+                       "rainbow",
+                       function(){
+                         player_movement.current = player_movement.FLYING;
+                         start_new_round(
+                           {
+                             generator_mode: BOARD.labyrinth_generator_mode.DIGGY_LEVEL,
+                             player_graphix: "rainbow"             
+                           });})
+                     );
+
+    // fluttershy
+    menu_buttons.push(game.add.button
+                      (0,0,
+                       "flutter",
+                       function(){
+                         player_movement.current = player_movement.FLYING;
+                         start_new_round(
+                           {
+                             generator_mode: BOARD.labyrinth_generator_mode.SCATTER_LEVEL,
+                             player_graphix: "flutter"
+                           });})
+                     );
+
+
+
+    for(var i =0; i < menu_buttons.length; i++)
+    {
+      var button = menu_buttons[i];
+      button.anchor.set(0.5);
+      button.fixedToCamera = true;
+      button.cameraOffset.y = Math.floor(game.height / 2);
+      button.cameraOffset.x = Math.floor(game.width * (i + 0.5) / menu_buttons.length);
+      console.log(button);
+    }
   }
 
 
 
   function start_new_round(game_mode){
 
+    console.log("starting new round");
+    console.log(game_mode);
+
+    for(var button of menu_buttons)
+      button.kill();
+    menu_buttons.length = 0;//clear
+
     game_mode = game_mode || {};
-    game_mode.generator_mode = game_mode.generator_mode || BOARD.labyrinth_generator_mode.DIGGY_LEVEL;
+    if(game_mode.generator_mode == undefined) // caution 0 == false
+      game_mode.generator_mode = BOARD.labyrinth_generator_mode.DIGGY_LEVEL;
     game_mode.player_graphix = game_mode.player_graphix || "rainbow";
     game_mode.goal_graphix = game_mode.goal_graphix || "celestia";
 
@@ -187,9 +244,11 @@ var LABYRINTH = LABYRINTH || {};
     var start_postitions = BOARD.get_start_position();
 
     // ground layer:
-    ground_layer = ground_layer || map.create('ground', BOARD.width, BOARD.height, FIELD_SIZE, FIELD_SIZE);
-    ground_layer.resizeWorld();
+    if(ground_layer != undefined)
+      ground_layer.kill();
 
+    ground_layer = map.create('ground', BOARD.width, BOARD.height, FIELD_SIZE, FIELD_SIZE);
+    ground_layer.resizeWorld();
 
     // generate player:
     // player sprite
@@ -234,8 +293,9 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
     game.physics.arcade.enable(goal);
     goal.body.immovable=true;
 
-
     board_to_tilemap();
+
+    game_state.current = game_state.RUNNING;
 
     console.log("New round started.");
 
@@ -265,7 +325,7 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
     map.setCollision(tileset.STONE, true, "ground");
     if(player_movement.current == player_movement.WALKING)
     {
-      console.log ("Bush collisions enabled");
+//      console.log ("Bush collisions enabled");
       map.setCollision(tileset.BUSH, true, "ground");
     }
     
@@ -362,6 +422,7 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
     }
   };
 
+
   function handle_command(command)
   {
     if(command == "ghost")
@@ -380,6 +441,7 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
       TERM.log("Command '" + command +"' unknown.\nPress escape to close terminal.");
     }
   }
+
 
   // display some debugging infos
   function debugging_text()
@@ -404,10 +466,7 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
 
   function win_update()
   {
-    //todo
     player.body.velocity.set(0);
-    random_color_text(win_text);
-
   }
 
 
@@ -423,8 +482,8 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
 
     // next field drag
     var nearest_field = {};
-    nearest_field.x = Math.round(player.x / FIELD_SIZE) * FIELD_SIZE;
-    nearest_field.y = Math.round(player.y / FIELD_SIZE) * FIELD_SIZE;
+    nearest_field.x = (Math.round(player.x / FIELD_SIZE - 0.5) + 0.5) * FIELD_SIZE;
+    nearest_field.y = (Math.round(player.y / FIELD_SIZE - 0.5) + 0.5) * FIELD_SIZE;
 
     var body = player.body;
 
@@ -515,16 +574,22 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
 
   function win(){
     console.log("win!");
-    var msg = 'You made it!';
-    win_text = game.add.text(goal.x + goal.width / 2, goal.y, msg);
-    win_text.anchor.set(0.5);
-    win_text.align = 'center';
-    random_color_text(win_text);
-    win_text.setShadow(5, 5, 'rgba(0,0,0,0.5)', 10);
-    game.camera.focusOn(win_text);
-    
-    game_state.current = game_state.WIN;
+    player.body.velocity.set(0);
 
+    var castle = game.add.button(goal.x + goal.width / 2, goal.y, "castle", show_menu);
+
+    castle.anchor.set(0.5);
+    game.camera.unfollow();
+    game.camera.focusOn(castle);
+    castle.width = 2 * goal.width;
+    castle.height = 2 * goal.height;
+
+    game.world.bringToTop(player);
+    game.world.bringToTop(goal);
+
+    menu_buttons.push(castle);
+    game_state.current = game_state.WIN;
+    
   };
 
   // main

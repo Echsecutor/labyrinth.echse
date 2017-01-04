@@ -88,15 +88,15 @@ var BOARD = BOARD || {};
                                                  || Math.random() > 0.85
           )
         {
-          field[i].blocking = blocking_type.AIR_BLOCKING;
+          field[i].blocking = BOARD.blocking_type.AIR_BLOCKING;
         }
         else if (Math.random() > 0.9)
         {
-          field[i].blocking = blocking_type.GROUND_BLOCKING;
+          field[i].blocking =  BOARD.blocking_type.GROUND_BLOCKING;
         }
         else
         {
-          field[i].blocking = blocking_type.NON_BLOCKING;
+          field[i].blocking =  BOARD.blocking_type.NON_BLOCKING;
         }
       }
     }
@@ -219,9 +219,13 @@ var BOARD = BOARD || {};
         {
           field[i].blocking = BOARD.blocking_type.NON_BLOCKING;
         }
-        else
+        else if(field[i].generating == WALL && Math.random() > 0.9)
         {
           field[i].blocking = BOARD.blocking_type.GROUND_BLOCKING;
+        }
+        else
+        {
+          field[i].blocking = BOARD.blocking_type.AIR_BLOCKING;
         }
       }
     }
@@ -319,10 +323,10 @@ var BOARD = BOARD || {};
   // erases labyrinth, if existing, and generates a new one
   BOARD.generate_labyrinth = function(generator_mode)
   {
-    console.log("Generating Labyrinth");
-
     if (generator_mode == undefined)
       generator_mode = BOARD.labyrinth_generator_mode.SCATTER_LEVEL;
+
+    console.log("Generating Labyrinth " + generator_mode);
 
     if(generator_mode == BOARD.labyrinth_generator_mode.SCATTER_LEVEL)
     {

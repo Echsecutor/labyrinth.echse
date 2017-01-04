@@ -197,7 +197,7 @@ var TERM = TERM || {};
    TERM.log = function(msg)
    {
      history.push(msg)
-     render_text();;
+     render_text();
    }
 
  })();

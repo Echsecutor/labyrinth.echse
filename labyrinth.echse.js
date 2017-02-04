@@ -137,6 +137,9 @@ var LABYRINTH = LABYRINTH || {};
     // map tileset
     game.load.image('tileset', tileset.filename);
 
+    // sounds
+    game.load.audio('choose', 'audio/pony_aussuchen.mp3');
+
     // for debugging
     game.time.advancedTiming = true;
   };
@@ -210,6 +213,7 @@ var LABYRINTH = LABYRINTH || {};
                      );
 
 
+    var button_size = Math.floor(Math.min(game.height, game.width) / menu_buttons.length * 0.9);
 
     for(var i =0; i < menu_buttons.length; i++)
     {
@@ -218,8 +222,13 @@ var LABYRINTH = LABYRINTH || {};
       button.fixedToCamera = true;
       button.cameraOffset.y = Math.floor(game.height / 2);
       button.cameraOffset.x = Math.floor(game.width * (i + 0.5) / menu_buttons.length);
+      button.width = button_size;
+      button.height = button_size;
+
       console.log(button);
     }
+
+    game.sound.play("choose");
   }
 
 

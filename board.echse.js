@@ -44,8 +44,8 @@ var BOARD = BOARD || {};
   // members:
   //--------------------------------------------------
 
-  var d_width = 64;
-  var d_height = 64;
+  var d_width = 32;
+  var d_height = 32;
 
   var field = [d_width * d_height];
 

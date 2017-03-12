@@ -127,11 +127,11 @@ var LABYRINTH = LABYRINTH || {};
     console.log("Phaser: Preloading graphics");
 
     // player graphix
-    game.load.spritesheet("rainbow", "img/rainbow.png",100,100);
-    game.load.spritesheet("flutter", "img/flutter.png",100,100);
+    game.load.spritesheet("rainbow", "img/rainbow.png",512,512);
+    game.load.spritesheet("flutter", "img/flutter.png",512,512);
 
     // goal
-    game.load.spritesheet("celestia", "img/celestia.png", 256, 256);
+    game.load.spritesheet("celestia", "img/celestia.png", 1024, 1024);
     game.load.image("castle", "img/castle1.png");
 
     // map tileset
@@ -139,6 +139,7 @@ var LABYRINTH = LABYRINTH || {};
 
     // sounds
     game.load.audio('choose', 'audio/pony_aussuchen.mp3');
+    game.load.audio('start', 'audio/findet_celestia.mp3');
 
     // for debugging
     game.time.advancedTiming = true;
@@ -305,6 +306,8 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
     board_to_tilemap();
 
     game_state.current = game_state.RUNNING;
+
+    game.sound.play("start");
 
     console.log("New round started.");
 

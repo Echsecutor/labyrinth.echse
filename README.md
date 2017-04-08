@@ -3,12 +3,12 @@
 This is a simple labyrinth game with original graphics. It is written in javascript, hence <a href= "https://echsecutor.github.io/labyrinth.echse/">playable in the browser across platforms</a>.
 
 
-##Privacy Policy
+## Privacy Policy
 
 This app does not collect or use any personal data.
 
 
-##License
+## License
 
 Copyright 2015-2016 Ronja Schmittner and Sebastian Schmittner <sebastian@schmittner.pw>
 

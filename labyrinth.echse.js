@@ -52,7 +52,7 @@ var LABYRINTH = LABYRINTH || {};
   var ghost = false;
 
   // tile side length in pixels
-  var FIELD_SIZE= 100;
+  var FIELD_SIZE = 100;
   // player speedup
   var SPEED = 150;
 
@@ -97,8 +97,6 @@ var LABYRINTH = LABYRINTH || {};
   var player;
   var goal;
 
-  var win_text;
-
   // debugging
   var fps = {};
 
@@ -111,7 +109,7 @@ var LABYRINTH = LABYRINTH || {};
     game = new Phaser.Game(
       phaser_size.width,
       phaser_size.height,
-//      Phaser.CANVAS,
+      //      Phaser.CANVAS,
       Phaser.AUTO,
       'phaser-game-frame',
       {
@@ -196,7 +194,7 @@ var LABYRINTH = LABYRINTH || {};
                          start_new_round(
                            {
                              generator_mode: BOARD.labyrinth_generator_mode.DIGGY_LEVEL,
-                             player_graphix: "rainbow"             
+                             player_graphix: "rainbow"
                            });})
                      );
 
@@ -226,7 +224,7 @@ var LABYRINTH = LABYRINTH || {};
       button.width = button_size;
       button.height = button_size;
 
-      console.log(button);
+      //      console.log(button);
     }
 
     game.sound.play("choose");
@@ -287,7 +285,7 @@ var LABYRINTH = LABYRINTH || {};
 var border_size = Math.max(Math.ceil((game.width + game.height) / 20), 2 * FIELD_SIZE);
 game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width - 2 * border_size, game.height - 2 * border_size);
      */
-    
+
     game.camera.lerp.set(0.5);
     game.renderer.renderSession.roundPixels = true;
 
@@ -295,13 +293,15 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
     if(goal != undefined)
       goal.kill();
 
-    goal = game.add.sprite(start_postitions.goal.x * FIELD_SIZE, start_postitions.goal.y * FIELD_SIZE, game_mode.goal_graphix);
+    goal = game.add.sprite((start_postitions.goal.x + 0.5) * FIELD_SIZE, (start_postitions.goal.y + 0.5) * FIELD_SIZE, game_mode.goal_graphix);
 
     goal.width = FIELD_SIZE * 2;
     goal.height = FIELD_SIZE * 2;
 
     game.physics.arcade.enable(goal);
     goal.body.immovable=true;
+
+    goal.anchor.set(0.5);
 
     board_to_tilemap();
 
@@ -317,7 +317,7 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
   function board_to_tilemap()
   {
     map.fill(tileset.MUD, 0, 0, BOARD.width, BOARD.height, "ground");
-    
+
     for(var x = 0; x < BOARD.width; x++)
     {
       for(var y = 0; y < BOARD.height; y++)
@@ -337,10 +337,10 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
     map.setCollision(tileset.STONE, true, "ground");
     if(player_movement.current == player_movement.WALKING)
     {
-//      console.log ("Bush collisions enabled");
+      //      console.log ("Bush collisions enabled");
       map.setCollision(tileset.BUSH, true, "ground");
     }
-    
+
     // render goal/player
     // TODO: reconsider once using air layer
     if(player != undefined)
@@ -354,11 +354,11 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
   // only used for debugging
   function render(){
 
-     /*
-    // only works with canvas
-    var zone = game.camera.deadzone;
-    game.context.fillStyle = 'rgba(255,0,0,0.6)';
-    game.context.fillRect(zone.x, zone.y, zone.width, zone.height);
+    /*
+// only works with canvas
+var zone = game.camera.deadzone;
+game.context.fillStyle = 'rgba(255,0,0,0.6)';
+game.context.fillRect(zone.x, zone.y, zone.width, zone.height);
      */
 
     if(!show_fps)
@@ -400,7 +400,7 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
   // forward keystrokes to terminal, if present
   function key_down(event)
   {
-//    console.log("Key pressed: ")
+    //    console.log("Key pressed: ")
 
     var key = event.key;
 
@@ -437,20 +437,25 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
 
   function handle_command(command)
   {
+    var help = "This is the debugging terminal.\nPress escape to close it.\n";
+    help += "The following commands are currently supported:\n";
     if(command == "ghost")
     {
       ghost = ! ghost;
       TERM.log("ghost mode: " + ghost);
+      help += "'ghost' enables ghost mode.\n";
     }
     else if (command == "fps")
     {
       show_fps = ! show_fps;
       TERM.log("show fps: " + show_fps);
+      help += "'fps' show fps.\n";
     }
     else
     {
       TERM.show(game);
-      TERM.log("Command '" + command +"' unknown.\nPress escape to close terminal.");
+      TERM.log("Command '" + command +"' unknown.\n");
+      TERM.log(help);
     }
   }
 
@@ -478,7 +483,11 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
 
   function win_update()
   {
-    player.body.velocity.set(0);
+    player.body.velocity.x = goal.x + 1.5 * FIELD_SIZE - player.x;
+    player.body.velocity.y = goal.y - player.y;
+
+    turn_celestia();
+    turn_player();
   }
 
 
@@ -490,7 +499,7 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
       var map_collision = game.physics.arcade.collide(player, ground_layer);
     // transition to win state
     game.physics.arcade.collide(player, goal,
-                                 function(){win();});
+                                function(){win();});
 
     // next field drag
     var nearest_field = {};
@@ -566,14 +575,25 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
     body.velocity.x = Math.floor(body.velocity.x);
     body.velocity.y = Math.floor(body.velocity.y);
 
-
-    // turn celestia
-    if(player.x < goal.x)
-      goal.frame = 0;
-    else
-      goal.frame = 1;
-
+    turn_celestia();
   };
+
+
+  function turn_celestia()
+  {
+    if(player.x < goal.x)
+      goal.frame = 1;
+    else
+      goal.frame = 0;
+  }
+
+  function turn_player()
+  {
+    if(player.x < goal.x)
+      player.frame = 0;
+    else
+      player.frame = 1;
+  }
 
 
   function random_color_text(phaser_text)
@@ -588,20 +608,20 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
     console.log("win!");
     player.body.velocity.set(0);
 
-    var castle = game.add.button(goal.x + goal.width / 2, goal.y, "castle", show_menu);
+    var castle = game.add.button(goal.x + 0.5 * goal.width, goal.y - goal.height, "castle", show_menu);
 
     castle.anchor.set(0.5);
     game.camera.unfollow();
     game.camera.focusOn(castle);
-    castle.width = 2 * goal.width;
-    castle.height = 2 * goal.height;
+    castle.width = 3 * goal.width;
+    castle.height = 3 * goal.height;
 
     game.world.bringToTop(player);
     game.world.bringToTop(goal);
 
     menu_buttons.push(castle);
     game_state.current = game_state.WIN;
-    
+
   };
 
   // main
@@ -618,6 +638,6 @@ game.camera.deadzone = new Phaser.Rectangle(border_size, border_size, game.width
 
 
 document.addEventListener("DOMContentLoaded", function(event) {
-  // run the game after the browser figuered winow sizes...  
+  // run the game after the browser figuered winow sizes...
   LABYRINTH.run();
 });
